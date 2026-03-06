@@ -1,6 +1,5 @@
-"use client";
 import React, { useState } from "react";
-import { Tv, Globe, LayoutGrid, TrendingUp, Music, Gamepad2, Newspaper, Baby, Film, Zap, Trophy, ChevronDown, ChevronUp } from "lucide-react";
+import { Tv, Globe, LayoutGrid, TrendingUp, Music, Gamepad2, Newspaper, Baby, Film, Zap, Trophy, ChevronDown, ChevronUp, Heart, Clock } from "lucide-react";
 import type { Category, Country } from "@/domain/entities";
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -20,8 +19,13 @@ interface SidebarProps {
     countries: Country[];
     selectedCategory: string;
     selectedCountry: string;
+    showFavorites: boolean;
+    showRecents: boolean;
     onSelectCategory: (id: string) => void;
     onSelectCountry: (code: string) => void;
+    onShowFavorites: (show: boolean) => void;
+    onShowRecents: (show: boolean) => void;
+    onResetFilters: () => void;
     totalChannels: number;
     filteredCount: number;
 }
@@ -31,8 +35,13 @@ export function Sidebar({
     countries,
     selectedCategory,
     selectedCountry,
+    showFavorites,
+    showRecents,
     onSelectCategory,
     onSelectCountry,
+    onShowFavorites,
+    onShowRecents,
+    onResetFilters,
     totalChannels,
     filteredCount,
 }: SidebarProps) {
@@ -87,11 +96,25 @@ export function Sidebar({
                 <div className="sidebar-section">
                     <p className="sidebar-section-title">Browse</p>
                     <div
-                        className={`sidebar-item ${selectedCategory === "" && selectedCountry === "" ? "active" : ""}`}
-                        onClick={() => { onSelectCategory(""); onSelectCountry(""); }}
+                        className={`sidebar-item ${!showFavorites && !showRecents && selectedCategory === "" && selectedCountry === "" ? "active" : ""}`}
+                        onClick={onResetFilters}
                     >
                         <Globe size={15} />
                         All Channels
+                    </div>
+                    <div
+                        className={`sidebar-item ${showFavorites ? "active" : ""}`}
+                        onClick={() => onShowFavorites(true)}
+                    >
+                        <Heart size={15} color={showFavorites ? "#ff4b4b" : "currentColor"} />
+                        My Favorites
+                    </div>
+                    <div
+                        className={`sidebar-item ${showRecents ? "active" : ""}`}
+                        onClick={() => onShowRecents(true)}
+                    >
+                        <Clock size={15} color={showRecents ? "var(--accent)" : "currentColor"} />
+                        Recently Viewed
                     </div>
                 </div>
 
@@ -102,7 +125,7 @@ export function Sidebar({
                         <div
                             key={cat.id}
                             className={`sidebar-item ${selectedCategory === cat.id ? "active" : ""}`}
-                            onClick={() => { onSelectCategory(cat.id); onSelectCountry(""); }}
+                            onClick={() => onSelectCategory(cat.id)}
                         >
                             {CATEGORY_ICONS[cat.id] ?? <LayoutGrid size={15} />}
                             {cat.name}
@@ -152,7 +175,7 @@ export function Sidebar({
                             <div
                                 key={c.code}
                                 className={`sidebar-item ${selectedCountry === c.code ? "active" : ""}`}
-                                onClick={() => { onSelectCountry(c.code); onSelectCategory(""); }}
+                                onClick={() => onSelectCountry(c.code)}
                                 title={c.name}
                             >
                                 <span style={{ fontSize: "14px" }}>{flag}</span>

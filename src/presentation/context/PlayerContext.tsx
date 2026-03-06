@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useContext, useReducer, useCallback } from "react";
 import type { Channel, Stream } from "@/domain/entities";
+import { useAppStore } from "@/presentation/store/useAppStore";
 
 // ─── State ───────────────────────────────────────────────────────────────────
 interface PlayerState {
@@ -66,10 +67,12 @@ const PlayerContext = createContext<PlayerContextValue | null>(null);
 
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
     const [state, dispatch] = useReducer(reducer, initialState);
+    const addRecentChannel = useAppStore(s => s.addRecentChannel);
 
     const openPlayer = useCallback((channel: Channel, streams: Stream[]) => {
+        addRecentChannel(channel.id);
         dispatch({ type: "OPEN_PLAYER", channel, streams });
-    }, []);
+    }, [addRecentChannel]);
 
     const closePlayer = useCallback(() => {
         dispatch({ type: "CLOSE_PLAYER" });

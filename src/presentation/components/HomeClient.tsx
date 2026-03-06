@@ -1,8 +1,9 @@
 "use client";
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { Search, SlidersHorizontal, Tv } from "lucide-react";
 import type { Channel, Category, Country, Stream } from "@/domain/entities";
 import { useChannelFilter } from "@/presentation/hooks/useChannelFilter";
+import { useAppStore } from "@/presentation/store/useAppStore";
 import { ChannelCard } from "@/presentation/components/ChannelCard";
 import { SkeletonGrid } from "@/presentation/components/SkeletonCard";
 import { Sidebar } from "@/presentation/components/Sidebar";
@@ -29,15 +30,49 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
         return map;
     }, [streams]);
 
-    const {
-        filters,
-        channelsWithStreams,
-        setSearch,
-        setCategory,
-        setCountry,
-        resetFilters,
-        filteredChannels,
-    } = useChannelFilter(channels, streamsMap);
+    const search = useAppStore(s => s.search);
+    const category = useAppStore(s => s.category);
+    const country = useAppStore(s => s.country);
+    const showFavorites = useAppStore(s => s.showFavorites);
+    const showRecents = useAppStore(s => s.showRecents);
+    const favorites = useAppStore(s => s.favorites);
+
+    const setSearch = useAppStore(s => s.setSearch);
+    const setCategory = useAppStore(s => s.setCategory);
+    const setCountry = useAppStore(s => s.setCountry);
+    const setShowFavorites = useAppStore(s => s.setShowFavorites);
+    const setShowRecents = useAppStore(s => s.setShowRecents);
+    const resetFilters = useAppStore(s => s.resetFilters);
+    const toggleFavorite = useAppStore(s => s.toggleFavorite);
+
+    const { channelsWithStreams, filteredChannels } = useChannelFilter(channels, streamsMap);
+
+    const [visibleCount, setVisibleCount] = useState(50);
+    const loadMoreRef = useRef<HTMLDivElement>(null);
+
+    // Reset visible count when filters change or filtered channels change
+    useEffect(() => {
+        setVisibleCount(50);
+    }, [search, category, country, showFavorites, showRecents, filteredChannels.length]);
+
+    // Intersection Observer to load more channels
+    useEffect(() => {
+        if (!loadMoreRef.current) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    setVisibleCount((prev) => Math.min(prev + 50, channelsWithStreams.length));
+                }
+            },
+            { threshold: 0.1, rootMargin: "400px" }
+        );
+
+        observer.observe(loadMoreRef.current);
+        return () => observer.disconnect();
+    }, [channelsWithStreams.length]);
+
+    const visibleChannels = channelsWithStreams.slice(0, visibleCount);
 
     return (
         <PlayerProvider>
@@ -46,10 +81,15 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
                 <Sidebar
                     categories={categories}
                     countries={countries}
-                    selectedCategory={filters.category}
-                    selectedCountry={filters.country}
+                    selectedCategory={category}
+                    selectedCountry={country}
+                    showFavorites={showFavorites}
+                    showRecents={showRecents}
                     onSelectCategory={setCategory}
                     onSelectCountry={setCountry}
+                    onShowFavorites={setShowFavorites}
+                    onShowRecents={setShowRecents}
+                    onResetFilters={resetFilters}
                     totalChannels={channels.filter(c => !c.is_nsfw && (streamsMap.get(c.id)?.length ?? 0) > 0).length}
                     filteredCount={channelsWithStreams.length}
                 />
@@ -69,22 +109,32 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
                                 type="text"
                                 placeholder="Search channels, networks…"
                                 className="search-input"
-                                value={filters.search}
+                                value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                             />
                         </div>
 
                         {/* Active filter pills */}
-                        {(filters.category || filters.country) && (
+                        {(category || country || showFavorites || showRecents) && (
                             <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                                {filters.category && (
+                                {category && (
                                     <span className="badge badge-category" style={{ cursor: "pointer" }} onClick={() => setCategory("")}>
-                                        {filters.category} ×
+                                        {category} ×
                                     </span>
                                 )}
-                                {filters.country && (
+                                {country && (
                                     <span className="badge badge-country" style={{ cursor: "pointer" }} onClick={() => setCountry("")}>
-                                        {filters.country.toUpperCase()} ×
+                                        {country.toUpperCase()} ×
+                                    </span>
+                                )}
+                                {showFavorites && (
+                                    <span className="badge badge-category" style={{ cursor: "pointer", background: "rgba(255, 75, 75, 0.1)", color: "#ff4b4b", border: "1px solid rgba(255, 75, 75, 0.2)" }} onClick={() => setShowFavorites(false)}>
+                                        Favorites ×
+                                    </span>
+                                )}
+                                {showRecents && (
+                                    <span className="badge badge-category" style={{ cursor: "pointer", background: "rgba(108, 99, 255, 0.1)", color: "var(--accent)", border: "1px solid rgba(108, 99, 255, 0.2)" }} onClick={() => setShowRecents(false)}>
+                                        Recently Viewed ×
                                     </span>
                                 )}
                                 <button
@@ -116,7 +166,7 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
                             <span className="stat-value">{streams.length.toLocaleString('en-US')}</span>
                             <span>active streams</span>
                         </div>
-                        {(filters.search || filters.category || filters.country) && (
+                        {(search || category || country) && (
                             <>
                                 <div className="stats-dot" />
                                 <div className="stat-item" style={{ color: "var(--accent)" }}>
@@ -149,13 +199,20 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
                         </div>
                     ) : (
                         <div className="channel-grid">
-                            {channelsWithStreams.map((channel) => (
+                            {visibleChannels.map((channel) => (
                                 <ChannelCard
                                     key={channel.id}
                                     channel={channel}
                                     streams={streamsMap.get(channel.id) ?? []}
+                                    isFavorite={favorites.includes(channel.id)}
+                                    onToggleFavorite={toggleFavorite}
                                 />
                             ))}
+                            {visibleCount < channelsWithStreams.length && (
+                                <div ref={loadMoreRef} style={{ gridColumn: "1 / -1", height: 40, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    <div className="spinner" style={{ width: 24, height: 24, borderWidth: 2 }} />
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

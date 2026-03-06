@@ -1,15 +1,17 @@
 "use client";
 import React, { useState } from "react";
-import { Play, Tv } from "lucide-react";
+import { Play, Tv, Heart } from "lucide-react";
 import type { Channel, Stream } from "@/domain/entities";
 import { usePlayer } from "@/presentation/context/PlayerContext";
 
 interface ChannelCardProps {
     channel: Channel;
     streams: Stream[];
+    isFavorite: boolean;
+    onToggleFavorite: (id: string) => void;
 }
 
-export function ChannelCard({ channel, streams }: ChannelCardProps) {
+export function ChannelCard({ channel, streams, isFavorite, onToggleFavorite }: ChannelCardProps) {
     const { openPlayer } = usePlayer();
     const [logoError, setLogoError] = useState(false);
 
@@ -42,6 +44,32 @@ export function ChannelCard({ channel, streams }: ChannelCardProps) {
                         <Tv size={22} />
                     </div>
                 )}
+
+                {/* Favorite button */}
+                <div
+                    className="favorite-btn"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleFavorite(channel.id);
+                    }}
+                    style={{
+                        position: 'absolute',
+                        top: '8px',
+                        right: '8px',
+                        zIndex: 10,
+                        background: isFavorite ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0,0,0,0.4)',
+                        backdropFilter: 'blur(4px)',
+                        padding: '6px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s ease',
+                        color: isFavorite ? '#ff4b4b' : 'white',
+                    }}
+                >
+                    <Heart size={16} fill={isFavorite ? '#ff4b4b' : 'transparent'} />
+                </div>
 
                 {/* Play overlay on hover */}
                 <div className="play-overlay">

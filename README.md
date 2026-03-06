@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📺 IPTV Stream Web App
 
-## Getting Started
+A modern, fast, and feature-rich IPTV web application built to stream live TV channels from around the world. Designed with a clean, dynamic aesthetic inspired by modern Smart TV interfaces and gamer platforms.
 
-First, run the development server:
+## 🚀 Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+*   **Global Live TV:** Access thousands of live TV channels via the [IPTV-org](https://github.com/iptv-org/iptv) dataset.
+*   **HLS Video Player:** Integrated custom video player built on top of `hls.js` capable of smoothly streaming `.m3u8` playlists.
+*   **Smart Filtering & Search:**
+    *   **Debounced Search:** Find channels instantly without ui lag.
+    *   **Categories & Countries:** Filter the channel grid dynamically by their genre or origin country.
+*   **User Personalization (Zustand + LocalStorage):**
+    *   ❤️ **Favorites:** Save your preferred channels and quickly access them from the sidebar.
+    *   🕒 **Recently Viewed:** Automatically tracks your watch history for easy resuming.
+*   **High Performance:**
+    *   **Infinite Scrolling:** Employs the Intersection Observer API to only render channels visible on your screen, drastically reducing initial load times and memory footprint.
+    *   **Optimized Architecture:** Clean Architecture principles ensuring decoupling between business logic, data boundaries, and UI presentation components.
+*   **Modern UI/UX:** Built with React and CSS, utilizing responsive flexbox/grid layouts, glassmorphism overlays, and Lucide Icons.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ Technology Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+*   [Next.js](https://nextjs.org/) (App Router Framework)
+*   [React](https://reactjs.org/) 18 (UI Library)
+*   [TypeScript](https://www.typescriptlang.org/) (Static Typing)
+*   [Zustand](https://zustand-demo.pmnd.rs/) (Global State Management & Persistence)
+*   [HLS.js](https://github.com/video-dev/hls.js) (Video Streaming)
+*   [Lucide React](https://lucide.dev/) (Iconography)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🏗️ Project Architecture (Clean Architecture)
 
-## Learn More
+The application follows strict Clean Architecture guidelines:
 
-To learn more about Next.js, take a look at the following resources:
+*   **`src/domain`**: Entities (`Channel`, `Category`, `Country`, `Stream`) and repository interfaces. Contains zero external dependencies.
+*   **`src/infrastructure`**: Concrete repository implementations (`*RepositoryImpl.ts`) and data sources fetching external APIs.
+*   **`src/application`**: Use Cases orchestrating data retrieval from repositories for the UI.
+*   **`src/presentation`**: Next.js Pages, React Components, Custom Hooks, Contexts, and Zustand stores.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## ⚙️ Getting Started
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Prerequisites
 
-## Deploy on Vercel
+*   Node.js (v18.x or newer strongly recommended)
+*   npm
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Installation
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **Clone the repository** (if applicable):
+   ```bash
+   git clone <repository-url>
+   cd iptv-app
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Run the development server**:
+   ```bash
+   npm run dev
+   ```
+
+4. **Open the App**:
+   Navigate to [http://localhost:3000](http://localhost:3000) in your browser.
+
+## 📋 API Reference
+
+This application uses the community-driven [IPTV-org](https://github.com/iptv-org/api) API to fetch metadata:
+
+*   Channels: `https://iptv-org.github.io/api/channels.json`
+*   Streams: `https://iptv-org.github.io/api/streams.json`
+*   Categories: `https://iptv-org.github.io/api/categories.json`
+*   Countries: `https://iptv-org.github.io/api/countries.json`
+
+## 🔮 Future Roadmap (Planned Features)
+
+*   **Picture-in-Picture (PiP):** Allow minimizing the video player into a floating window to browse while watching.
+*   **Language Filter:** Filter channels by available languages.
+*   **Dark/Light Theme Toggler.**
+
+## 📄 License
+
+This project is open-source and available under the standard MIT License. Data streams are provided strictly by third-party public lists.
