@@ -24,6 +24,10 @@ interface AppState {
     toggleFavorite: (channelId: string) => void;
     addRecentChannel: (channelId: string) => void;
     clearRecents: () => void;
+    
+    // Config state
+    hasInitializedCountry: boolean;
+    setHasInitializedCountry: (val: boolean) => void;
 }
 
 const MAX_RECENTS = 20;
@@ -45,6 +49,9 @@ export const useAppStore = create<AppState>()(
             setShowFavorites: (showFavorites) => set({ showFavorites, showRecents: false, category: "", country: "" }),
             setShowRecents: (showRecents) => set({ showRecents, showFavorites: false, category: "", country: "" }),
             resetFilters: () => set({ search: "", category: "", country: "", showFavorites: false, showRecents: false }),
+            
+            hasInitializedCountry: false,
+            setHasInitializedCountry: (val) => set({ hasInitializedCountry: val }),
 
             toggleFavorite: (channelId) => set((state) => {
                 const isFav = state.favorites.includes(channelId);
@@ -68,7 +75,9 @@ export const useAppStore = create<AppState>()(
             name: 'iptv-storage',
             partialize: (state) => ({
                 favorites: state.favorites,
-                recentChannelIds: state.recentChannelIds
+                recentChannelIds: state.recentChannelIds,
+                country: state.country,
+                hasInitializedCountry: state.hasInitializedCountry,
             }),
         }
     )

@@ -45,10 +45,37 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
     const setShowRecents = useAppStore(s => s.setShowRecents);
     const resetFilters = useAppStore(s => s.resetFilters);
     const toggleFavorite = useAppStore(s => s.toggleFavorite);
+    const hasInitializedCountry = useAppStore(s => s.hasInitializedCountry);
+    const setHasInitializedCountry = useAppStore(s => s.setHasInitializedCountry);
 
     const { channelsWithStreams, filteredChannels } = useChannelFilter(channels, streamsMap);
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    // Initial country detection via IP
+    useEffect(() => {
+        if (!hasInitializedCountry) {
+            const fetchCountry = async () => {
+                try {
+                    const res = await fetch("https://get.geojs.io/v1/ip/country.json");
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data && data.country) {
+                            const code = data.country.toLowerCase();
+                            if (countries.some(c => c.code === code)) {
+                                setCountry(code);
+                            }
+                        }
+                    }
+                } catch (err) {
+                    // Silently ignore if blocked by adblockers or browsers to avoid console errors
+                } finally {
+                    setHasInitializedCountry(true);
+                }
+            };
+            fetchCountry();
+        }
+    }, [hasInitializedCountry, setCountry, setHasInitializedCountry, countries]);
 
     // --- Virtualization logic ---
     const parentRef = useRef<HTMLDivElement>(null);
