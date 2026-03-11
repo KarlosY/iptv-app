@@ -1,6 +1,6 @@
 "use client";
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import { Search, SlidersHorizontal, Tv } from "lucide-react";
+import { Search, SlidersHorizontal, Tv, Menu } from "lucide-react";
 import type { Channel, Category, Country, Stream } from "@/domain/entities";
 import { useChannelFilter } from "@/presentation/hooks/useChannelFilter";
 import { useAppStore } from "@/presentation/store/useAppStore";
@@ -9,6 +9,7 @@ import { SkeletonGrid } from "@/presentation/components/SkeletonCard";
 import { Sidebar } from "@/presentation/components/Sidebar";
 import { PlayerModal } from "@/presentation/components/PlayerModal";
 import { PlayerProvider } from "@/presentation/context/PlayerContext";
+import { useWindowVirtualizer } from "@tanstack/react-virtual";
 
 interface HomeClientProps {
     channels: Channel[];
@@ -47,32 +48,46 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
 
     const { channelsWithStreams, filteredChannels } = useChannelFilter(channels, streamsMap);
 
-    const [visibleCount, setVisibleCount] = useState(50);
-    const loadMoreRef = useRef<HTMLDivElement>(null);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-    // Reset visible count when filters change or filtered channels change
+    // --- Virtualization logic ---
+    const parentRef = useRef<HTMLDivElement>(null);
+    const [columns, setColumns] = useState(1);
+
     useEffect(() => {
-        setVisibleCount(50);
-    }, [search, category, country, showFavorites, showRecents, filteredChannels.length]);
-
-    // Intersection Observer to load more channels
-    useEffect(() => {
-        if (!loadMoreRef.current) return;
-
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (entries[0].isIntersecting) {
-                    setVisibleCount((prev) => Math.min(prev + 50, channelsWithStreams.length));
-                }
-            },
-            { threshold: 0.1, rootMargin: "400px" }
-        );
-
-        observer.observe(loadMoreRef.current);
+        if (!parentRef.current) return;
+        const observer = new ResizeObserver((entries) => {
+            const containerWidth = entries[0].contentRect.width;
+            const padding = 48; // 24px left + 24px right
+            const gap = 16;
+            const availableWidth = containerWidth - padding;
+            
+            // Adjust min column width based on breakpoints matching CSS
+            const isLarge = window.innerWidth >= 1600;
+            const isMobile = window.innerWidth <= 768;
+            const minColWidth = isLarge ? 200 : (isMobile ? 120 : 180);
+            
+            const cols = Math.max(1, Math.floor((availableWidth + gap) / (minColWidth + gap)));
+            setColumns(cols);
+        });
+        
+        observer.observe(parentRef.current);
         return () => observer.disconnect();
-    }, [channelsWithStreams.length]);
+    }, []);
 
-    const visibleChannels = channelsWithStreams.slice(0, visibleCount);
+    const rowCount = Math.ceil(channelsWithStreams.length / columns);
+    
+    // Estimate row height: width * 9/16 (image) + ~70px (body)
+    const estimateRowHeight = () => {
+        const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+        return isMobile ? 190 : 220;
+    };
+
+    const virtualizer = useWindowVirtualizer({
+        count: rowCount,
+        estimateSize: estimateRowHeight,
+        overscan: 5,
+    });
 
     return (
         <PlayerProvider>
@@ -92,13 +107,21 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
                     onResetFilters={resetFilters}
                     totalChannels={channels.filter(c => !c.is_nsfw && (streamsMap.get(c.id)?.length ?? 0) > 0).length}
                     filteredCount={channelsWithStreams.length}
+                    isOpen={isSidebarOpen}
+                    onClose={() => setIsSidebarOpen(false)}
                 />
 
                 {/* Main */}
                 <div className="main-content">
                     {/* Header */}
                     <header className="header">
-                        <div className="sidebar-logo-icon" style={{ flexShrink: 0 }}>
+                        <button 
+                            className="mobile-menu-btn" 
+                            onClick={() => setIsSidebarOpen(true)}
+                        >
+                            <Menu size={20} />
+                        </button>
+                        <div className="sidebar-logo-icon desktop-logo-icon" style={{ flexShrink: 0 }}>
                             <Tv size={16} color="white" />
                         </div>
 
@@ -198,21 +221,48 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
                             </button>
                         </div>
                     ) : (
-                        <div className="channel-grid">
-                            {visibleChannels.map((channel) => (
-                                <ChannelCard
-                                    key={channel.id}
-                                    channel={channel}
-                                    streams={streamsMap.get(channel.id) ?? []}
-                                    isFavorite={favorites.includes(channel.id)}
-                                    onToggleFavorite={toggleFavorite}
-                                />
-                            ))}
-                            {visibleCount < channelsWithStreams.length && (
-                                <div ref={loadMoreRef} style={{ gridColumn: "1 / -1", height: 40, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                    <div className="spinner" style={{ width: 24, height: 24, borderWidth: 2 }} />
-                                </div>
-                            )}
+                        <div ref={parentRef} style={{ width: "100%", padding: "24px" }}>
+                            <div
+                                style={{
+                                    height: `${virtualizer.getTotalSize()}px`,
+                                    width: "100%",
+                                    position: "relative",
+                                }}
+                            >
+                                {virtualizer.getVirtualItems().map((virtualRow) => {
+                                    const startIndex = virtualRow.index * columns;
+                                    const rowChannels = channelsWithStreams.slice(startIndex, startIndex + columns);
+
+                                    return (
+                                        <div
+                                            key={virtualRow.key}
+                                            style={{
+                                                position: "absolute",
+                                                top: 0,
+                                                left: 0,
+                                                width: "100%",
+                                                height: `${virtualRow.size}px`,
+                                                transform: `translateY(${virtualRow.start}px)`,
+                                                display: "grid",
+                                                gridTemplateColumns: `repeat(${columns}, 1fr)`,
+                                                gap: "16px",
+                                                paddingBottom: "16px", // acts as row gap
+                                            }}
+                                        >
+                                            {rowChannels.map((channel) => (
+                                                <div key={channel.id} style={{ minWidth: 0, height: "100%" }}>
+                                                    <ChannelCard
+                                                        channel={channel}
+                                                        streams={streamsMap.get(channel.id) ?? []}
+                                                        isFavorite={favorites.includes(channel.id)}
+                                                        onToggleFavorite={toggleFavorite}
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     )}
                 </div>

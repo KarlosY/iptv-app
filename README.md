@@ -1,4 +1,4 @@
-# 📺 IPTV Stream Web App
+# IPTV Ykar Stream Web App
 
 A modern, fast, and feature-rich IPTV web application built to stream live TV channels from around the world. Designed with a clean, dynamic aesthetic inspired by modern Smart TV interfaces and gamer platforms.
 

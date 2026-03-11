@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Tv, Globe, LayoutGrid, TrendingUp, Music, Gamepad2, Newspaper, Baby, Film, Zap, Trophy, ChevronDown, ChevronUp, Heart, Clock } from "lucide-react";
+import Link from "next/link";
+import { Tv, Globe, LayoutGrid, TrendingUp, Music, Gamepad2, Newspaper, Baby, Film, Zap, Trophy, ChevronDown, ChevronUp, Heart, Clock, Github } from "lucide-react";
 import type { Category, Country } from "@/domain/entities";
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -28,6 +29,8 @@ interface SidebarProps {
     onResetFilters: () => void;
     totalChannels: number;
     filteredCount: number;
+    isOpen?: boolean;
+    onClose?: () => void;
 }
 
 export function Sidebar({
@@ -44,6 +47,8 @@ export function Sidebar({
     onResetFilters,
     totalChannels,
     filteredCount,
+    isOpen = false,
+    onClose,
 }: SidebarProps) {
     const [showAllCountries, setShowAllCountries] = useState(false);
     const [countrySearch, setCountrySearch] = useState("");
@@ -59,16 +64,25 @@ export function Sidebar({
     const displayedCountries = effectiveShowAll ? countriesList : countriesList.slice(0, 15);
 
     return (
-        <aside className="sidebar">
-            {/* Logo */}
-            <div className="sidebar-logo">
-                <div className="sidebar-logo-icon">
-                    <Tv size={18} color="white" />
+        <>
+            {/* Mobile Backdrop */}
+            {isOpen && (
+                <div 
+                    className="sidebar-backdrop" 
+                    onClick={onClose}
+                />
+            )}
+            
+            <aside className={`sidebar ${isOpen ? "open" : ""}`}>
+                {/* Logo */}
+                <div className="sidebar-logo">
+                    <div className="sidebar-logo-icon">
+                        <Tv size={18} color="white" />
+                    </div>
+                    <span className="sidebar-logo-text">IPTV Ykar</span>
                 </div>
-                <span className="sidebar-logo-text">IPTV Stream</span>
-            </div>
 
-            {/* Stats */}
+                {/* Stats */}
             <div
                 style={{
                     padding: "12px 20px",
@@ -205,6 +219,36 @@ export function Sidebar({
                     )}
                 </div>
             </div>
-        </aside>
+                
+            {/* Sidebar Footer (Sticky at bottom) */}
+            <div style={{
+                padding: "16px 20px",
+                borderTop: "1px solid var(--border)",
+                background: "var(--bg-sidebar)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px",
+                flexShrink: 0,
+                zIndex: 10
+            }}>
+                <p style={{ fontSize: "11px", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                    Data provided by <a href="https://iptv-org.github.io/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", textDecoration: "none" }}>iptv-org</a>.
+                </p>
+                <div style={{ display: "flex", gap: "12px" }}>
+                    <a href="https://github.com/iptv-org/iptv" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-secondary)", transition: "color 0.2s" }} title="GitHub">
+                        <Github size={16} />
+                    </a>
+                    <a href="https://iptv-org.github.io/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-secondary)", transition: "color 0.2s" }} title="Website">
+                        <Globe size={16} />
+                    </a>
+                </div>
+                <div style={{ display: "flex", gap: "8px", fontSize: "10px", marginTop: "2px" }}>
+                    <Link href="/terms" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Terms & Conditions</Link>
+                    <span style={{ color: "var(--border)" }}>•</span>
+                    <Link href="/privacy" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Privacy</Link>
+                </div>
+            </div>
+            </aside>
+        </>
     );
 }

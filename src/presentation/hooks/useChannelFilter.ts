@@ -19,7 +19,7 @@ export function useChannelFilter(
     const debouncedSearch = useDebounce(search, 300);
 
     const filteredChannels = useMemo(() => {
-        let result = channels.filter((ch) => {
+        const result = channels.filter((ch) => {
             if (ch.is_nsfw) return false;
 
             if (showFavorites && !favorites.includes(ch.id)) return false;

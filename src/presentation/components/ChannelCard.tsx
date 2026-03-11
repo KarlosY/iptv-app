@@ -37,6 +37,8 @@ export function ChannelCard({ channel, streams, isFavorite, onToggleFavorite }: 
                         src={channel.logo}
                         alt={channel.name}
                         className="card-logo"
+                        loading="lazy"
+                        decoding="async"
                         onError={() => setLogoError(true)}
                     />
                 ) : (
