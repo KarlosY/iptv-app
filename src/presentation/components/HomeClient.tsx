@@ -55,10 +55,22 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isAboutOpen, setIsAboutOpen] = useState(false);
+    const [browserCountry, setBrowserCountry] = useState<string | null>(null);
 
     const { theme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
-    useEffect(() => setMounted(true), []);
+    
+    useEffect(() => {
+        setMounted(true);
+        try {
+            const loc = navigator.language;
+            if (loc && loc.includes('-')) {
+                setBrowserCountry(loc.split('-')[1].toLowerCase());
+            } else if (loc === 'es') {
+                setBrowserCountry('es');
+            }
+        } catch (e) {}
+    }, []);
 
     // Initial country detection via IP
     useEffect(() => {
@@ -84,6 +96,25 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
             fetchCountry();
         }
     }, [hasInitializedCountry, setCountry, setHasInitializedCountry, countries]);
+
+    const heroChannels = useMemo(() => {
+        // En caso de estar buscando algo o en listas especiales, NO mostrar Billboard.
+        if (search || showFavorites || showRecents) return [];
+
+        // Si ya hay un país filtrado u otra categoría, tomar de esa pool filtrada
+        if (country || category) {
+            return channelsWithStreams.slice(0, 5);
+        }
+
+        // Si el usuario no tiene filtros y vimos el código regional nativo de SO (PE, CL, ES, etc)
+        if (browserCountry) {
+            const local = channelsWithStreams.filter(c => c.country?.toLowerCase() === browserCountry);
+            if (local.length > 0) return local.slice(0, 5);
+        }
+
+        // Fallback global final
+        return channelsWithStreams.slice(0, 5);
+    }, [search, showFavorites, showRecents, country, category, channelsWithStreams, browserCountry]);
 
     // --- Virtualization logic ---
     const parentRef = useRef<HTMLDivElement>(null);
@@ -240,8 +271,8 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
                         </div>
                     </header>
 
-                    {!search && !showFavorites && !showRecents && channelsWithStreams.length > 0 && (
-                        <HeroBillboard channels={channelsWithStreams.slice(0, 5)} streamsMap={streamsMap} />
+                    {heroChannels.length > 0 && (
+                        <HeroBillboard channels={heroChannels} streamsMap={streamsMap} />
                     )}
 
                     {/* Stats bar */}
@@ -337,6 +368,9 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
 
             {/* HLS Player modal */}
             <PlayerModal />
+
+            {/* About Modal */}
+            <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
         </PlayerProvider>
     );
 }
