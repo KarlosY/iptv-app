@@ -1,7 +1,6 @@
 "use client";
-import { useMemo } from "react";
+import { useMemo, useDeferredValue } from "react";
 import type { Channel, Stream } from "@/domain/entities";
-import { useDebounce } from "./useDebounce";
 import { useAppStore } from "../store/useAppStore";
 
 export function useChannelFilter(
@@ -16,7 +15,7 @@ export function useChannelFilter(
     const favorites = useAppStore(s => s.favorites);
     const recentChannelIds = useAppStore(s => s.recentChannelIds);
 
-    const debouncedSearch = useDebounce(search, 300);
+    const deferredSearch = useDeferredValue(search);
 
     const filteredChannels = useMemo(() => {
         const result = channels.filter((ch) => {
@@ -28,8 +27,8 @@ export function useChannelFilter(
             if (category && !ch.categories.includes(category)) return false;
             if (country && ch.country?.toLowerCase() !== country.toLowerCase()) return false;
 
-            if (debouncedSearch) {
-                const q = debouncedSearch.toLowerCase();
+            if (deferredSearch) {
+                const q = deferredSearch.toLowerCase();
                 const matches =
                     ch.name.toLowerCase().includes(q) ||
                     ch.alt_names.some((n) => n.toLowerCase().includes(q)) ||
@@ -49,7 +48,7 @@ export function useChannelFilter(
         }
 
         return result;
-    }, [channels, category, country, showFavorites, showRecents, favorites, recentChannelIds, debouncedSearch]);
+    }, [channels, category, country, showFavorites, showRecents, favorites, recentChannelIds, deferredSearch]);
 
     // Only show channels that actually have at least one stream
     const channelsWithStreams = useMemo(

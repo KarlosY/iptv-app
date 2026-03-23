@@ -1,16 +1,28 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { X, Tv, AlertCircle, Loader2, Radio } from "lucide-react";
+import { X, Tv, AlertCircle, Loader2, Radio, Minimize2, Maximize2, Cast } from "lucide-react";
 import type Hls from "hls.js";
 import { usePlayer } from "@/presentation/context/PlayerContext";
 
 export function PlayerModal() {
-    const { state, closePlayer, setStream } = usePlayer();
+    const { state, closePlayer, setStream, toggleMini } = usePlayer();
     const videoRef = useRef<HTMLVideoElement>(null);
     const hlsRef = useRef<Hls | null>(null);
     const [status, setStatus] = useState<"loading" | "playing" | "error">("loading");
     const [errorMsg, setErrorMsg] = useState("");
     const [logoError, setLogoError] = useState(false);
+
+    const handleCast = async () => {
+        if (videoRef.current && (videoRef.current as any).remotePlayback) {
+            try {
+                await (videoRef.current as any).remotePlayback.prompt();
+            } catch (err) {
+                console.error("Cast failed:", err);
+            }
+        } else {
+            alert("Cast/AirPlay is not supported on this browser natively without SDK.");
+        }
+    };
 
     // init / destroy HLS when stream URL changes
     useEffect(() => {
@@ -103,11 +115,11 @@ export function PlayerModal() {
 
     if (!state.isOpen || !state.channel) return null;
 
-    const { channel, streams, activeStreamUrl } = state;
+    const { channel, streams, activeStreamUrl, isMini } = state;
 
     return (
-        <div className="player-backdrop" onClick={(e) => { if (e.target === e.currentTarget) closePlayer(); }}>
-            <div className="player-container">
+        <div className={`player-backdrop ${isMini ? 'mini-backdrop' : ''}`} onClick={(e) => { if (e.target === e.currentTarget && !isMini) closePlayer(); }}>
+            <div className={`player-container ${isMini ? 'player-mini' : ''}`}>
                 {/* Header */}
                 <div className="player-header">
                     {channel.logo && !logoError ? (
@@ -134,16 +146,26 @@ export function PlayerModal() {
                         </p>
                     </div>
 
-                    {status === "playing" && (
-                        <div className="badge" style={{ marginLeft: 8, gap: 6, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.25)", color: "#22c55e" }}>
+                    {status === "playing" && !isMini && (
+                        <div className="badge" style={{ marginLeft: "auto", gap: 6, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.25)", color: "#22c55e" }}>
                             <span className="live-dot" style={{ width: 6, height: 6 }} />
                             LIVE
                         </div>
                     )}
 
-                    <button className="player-close" onClick={closePlayer} aria-label="Close player">
-                        <X size={16} />
-                    </button>
+                    <div style={{ marginLeft: status === "playing" && !isMini ? 12 : "auto", display: "flex", alignItems: "center", gap: 12 }}>
+                        {!isMini && (
+                            <button className="player-close" onClick={handleCast} title="Transmit to TV" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <Cast size={16} />
+                            </button>
+                        )}
+                        <button className="player-close" onClick={toggleMini} title={isMini ? "Expand" : "Picture in Picture"} style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            {isMini ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+                        </button>
+                        <button className="player-close" onClick={closePlayer} aria-label="Close player" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <X size={16} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Video */}
@@ -171,30 +193,32 @@ export function PlayerModal() {
                 </div>
 
                 {/* Footer: stream selector */}
-                <div className="player-footer">
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <Radio size={13} style={{ color: "var(--text-muted)" }} />
-                        <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600, letterSpacing: "0.5px" }}>
-                            STREAMS ({streams.length})
-                        </span>
+                {!isMini && (
+                    <div className="player-footer">
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <Radio size={13} style={{ color: "var(--text-muted)" }} />
+                            <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600, letterSpacing: "0.5px" }}>
+                                STREAMS ({streams.length})
+                            </span>
+                        </div>
+                        <div className="stream-list">
+                            {streams.map((s, i) => (
+                                <button
+                                    key={i}
+                                    className={`stream-btn ${activeStreamUrl === s.url ? "active" : ""}`}
+                                    onClick={() => { setStream(s.url); setStatus("loading"); }}
+                                >
+                                    {s.quality ?? s.title ?? `Stream ${i + 1}`}
+                                </button>
+                            ))}
+                        </div>
+                        <p style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                            Keyboard: <kbd style={{ padding: "1px 5px", border: "1px solid var(--border)", borderRadius: 4 }}>Space</kbd> Play/Pause ·{" "}
+                            <kbd style={{ padding: "1px 5px", border: "1px solid var(--border)", borderRadius: 4 }}>F</kbd> Fullscreen ·{" "}
+                            <kbd style={{ padding: "1px 5px", border: "1px solid var(--border)", borderRadius: 4 }}>Esc</kbd> Close
+                        </p>
                     </div>
-                    <div className="stream-list">
-                        {streams.map((s, i) => (
-                            <button
-                                key={i}
-                                className={`stream-btn ${activeStreamUrl === s.url ? "active" : ""}`}
-                                onClick={() => { setStream(s.url); setStatus("loading"); }}
-                            >
-                                {s.quality ?? s.title ?? `Stream ${i + 1}`}
-                            </button>
-                        ))}
-                    </div>
-                    <p style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                        Keyboard: <kbd style={{ padding: "1px 5px", border: "1px solid var(--border)", borderRadius: 4 }}>Space</kbd> Play/Pause ·{" "}
-                        <kbd style={{ padding: "1px 5px", border: "1px solid var(--border)", borderRadius: 4 }}>F</kbd> Fullscreen ·{" "}
-                        <kbd style={{ padding: "1px 5px", border: "1px solid var(--border)", borderRadius: 4 }}>Esc</kbd> Close
-                    </p>
-                </div>
+                )}
             </div>
         </div>
     );

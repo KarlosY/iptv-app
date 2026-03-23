@@ -6,6 +6,7 @@ import { useAppStore } from "@/presentation/store/useAppStore";
 // ─── State ───────────────────────────────────────────────────────────────────
 interface PlayerState {
     isOpen: boolean;
+    isMini: boolean;
     channel: Channel | null;
     streams: Stream[];
     activeStreamUrl: string | null;
@@ -15,6 +16,7 @@ interface PlayerState {
 
 const initialState: PlayerState = {
     isOpen: false,
+    isMini: false,
     channel: null,
     streams: [],
     activeStreamUrl: null,
@@ -26,6 +28,7 @@ const initialState: PlayerState = {
 type Action =
     | { type: "OPEN_PLAYER"; channel: Channel; streams: Stream[] }
     | { type: "CLOSE_PLAYER" }
+    | { type: "TOGGLE_MINI" }
     | { type: "SET_LOADING" }
     | { type: "SET_ERROR"; error: string }
     | { type: "SET_STREAM"; url: string };
@@ -36,6 +39,7 @@ function reducer(state: PlayerState, action: Action): PlayerState {
             return {
                 ...state,
                 isOpen: true,
+                isMini: false,
                 channel: action.channel,
                 streams: action.streams,
                 activeStreamUrl: action.streams[0]?.url ?? null,
@@ -44,6 +48,8 @@ function reducer(state: PlayerState, action: Action): PlayerState {
             };
         case "CLOSE_PLAYER":
             return { ...initialState };
+        case "TOGGLE_MINI":
+            return { ...state, isMini: !state.isMini };
         case "SET_LOADING":
             return { ...state, isLoading: true, error: null };
         case "SET_ERROR":
@@ -60,6 +66,7 @@ interface PlayerContextValue {
     state: PlayerState;
     openPlayer: (channel: Channel, streams: Stream[]) => void;
     closePlayer: () => void;
+    toggleMini: () => void;
     setStream: (url: string) => void;
 }
 
@@ -78,12 +85,16 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: "CLOSE_PLAYER" });
     }, []);
 
+    const toggleMini = useCallback(() => {
+        dispatch({ type: "TOGGLE_MINI" });
+    }, []);
+
     const setStream = useCallback((url: string) => {
         dispatch({ type: "SET_STREAM", url });
     }, []);
 
     return (
-        <PlayerContext.Provider value={{ state, openPlayer, closePlayer, setStream }}>
+        <PlayerContext.Provider value={{ state, openPlayer, closePlayer, toggleMini, setStream }}>
             {children}
         </PlayerContext.Provider>
     );

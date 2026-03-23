@@ -4,6 +4,40 @@
 
 /* ─── Design Tokens ─────────────────────────────────────────────── */
 :root {
+  /* LIGHT THEME (default) */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-card: #f1f5f9;
+  --bg-card-hover: #e2e8f0;
+  --bg-sidebar: #ffffff;
+  --bg-glass: rgba(255, 255, 255, 0.85);
+
+  --accent: #0980ca;
+  --accent-hover: #065b91;
+  --accent-glow: rgba(9, 128, 202, 0.25);
+
+  --border: #e2e8f0;
+  --border-active: rgba(9, 128, 202, 0.5);
+
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.05);
+  --shadow-glow: 0 0 24px rgba(9, 128, 202, 0.15);
+  --shadow-player: 0 8px 48px rgba(0, 0, 0, 0.1);
+
+  --sidebar-width: 260px;
+  --header-height: 64px;
+}
+
+.dark {
+  /* DARK THEME */
   --bg-primary: #080b14;
   --bg-secondary: #0d1120;
   --bg-card: rgba(255, 255, 255, 0.04);
@@ -22,17 +56,9 @@
   --text-secondary: #8891a8;
   --text-muted: #4d5568;
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
-
   --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
   --shadow-glow: 0 0 30px rgba(124, 108, 252, 0.2);
   --shadow-player: 0 8px 48px rgba(0, 0, 0, 0.7);
-
-  --sidebar-width: 260px;
-  --header-height: 64px;
 }
 
 /* ─── Reset & Base ──────────────────────────────────────────────── */
@@ -55,6 +81,7 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s, color 0.3s;
 }
 
 /* Scrollbar */
@@ -68,12 +95,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(124, 108, 252, 0.3);
+  background: var(--accent-glow);
   border-radius: 99px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(124, 108, 252, 0.6);
+  background: var(--accent);
 }
 
 /* ─── Glassmorphism Components ───────────────────────────────────── */
@@ -129,7 +156,7 @@ body {
 /* ─── Header ─────────────────────────────────────────────────────── */
 .header {
   height: var(--header-height);
-  background: rgba(8, 11, 20, 0.9);
+  background: var(--bg-glass);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);
   display: flex;
@@ -146,6 +173,8 @@ body {
   flex: 1;
   max-width: 480px;
   position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .search-input {
@@ -162,7 +191,7 @@ body {
 }
 
 .search-input::placeholder {
-  color: var(--text-muted);
+  color: #94a3b8; /* Lighter color for better visibility */
 }
 
 .search-input:focus {
@@ -173,10 +202,11 @@ body {
 
 .search-icon {
   position: absolute;
-  left: 14px;
+  left: 16px;
   top: 50%;
+  margin-top: -0.5px; /* Perfect pixel alignment */
   transform: translateY(-50%);
-  color: var(--text-muted);
+  color: #94a3b8; /* Match placeholder color */
   pointer-events: none;
 }
 
@@ -203,7 +233,7 @@ body {
 .sidebar-logo-text {
   font-size: 18px;
   font-weight: 800;
-  background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -292,7 +322,7 @@ body {
 .card-logo-wrapper {
   width: 100%;
   aspect-ratio: 16/9;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-primary); /* Uses theme explicitly to alternate black/white organically */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -428,10 +458,13 @@ body {
   border-radius: var(--radius-sm);
 }
 
-/* ─── Player Modal ───────────────────────────────────────────────── */
+/* ─── Player Modal ─────────────────────────────────────────────────── */
 .player-backdrop {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
   background: rgba(4, 6, 12, 0.92);
   backdrop-filter: blur(12px);
   z-index: 100;
@@ -439,7 +472,51 @@ body {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  animation: fadeIn 0.2s ease;
+}
+
+/* MINI PLAYER PIP MODE */
+.player-backdrop.mini-backdrop {
+  background: transparent;
+  backdrop-filter: none;
+  pointer-events: none; /* Let clicks pass through */
+}
+
+.player-container {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 960px;
+  overflow: hidden;
+  box-shadow: var(--shadow-player);
+  display: flex;
+  flex-direction: column;
+  animation: modal-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: auto; /* ensure it catches clicks even if backdrop is none */
+}
+
+.player-container.player-mini {
+  position: absolute; /* relative to fixed backdrop */
+  right: 24px;
+  bottom: 24px;
+  width: 380px;
+  animation: none;
+  box-shadow: 0 16px 64px rgba(0,0,0,0.6);
+  border: 1px solid var(--border-active);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.player-mini .player-header {
+  padding: 12px 16px;
+}
+
+.player-mini .player-channel-logo {
+  width: 32px;
+  height: 32px;
+}
+
+.player-mini .player-channel-country {
+  display: none; /* Hide country metadata in PiP to save space */
 }
 
 @keyframes fadeIn {

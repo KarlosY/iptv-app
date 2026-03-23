@@ -1,6 +1,7 @@
 "use client";
-import React, { useMemo, useState, useEffect, useRef } from "react";
-import { Search, SlidersHorizontal, Tv, Menu } from "lucide-react";
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Search, Tv, SlidersHorizontal, Menu, Sun, Moon } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import type { Channel, Category, Country, Stream } from "@/domain/entities";
 import { useChannelFilter } from "@/presentation/hooks/useChannelFilter";
 import { useAppStore } from "@/presentation/store/useAppStore";
@@ -51,6 +52,10 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
     const { channelsWithStreams, filteredChannels } = useChannelFilter(channels, streamsMap);
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    const { theme, setTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
 
     // Initial country detection via IP
     useEffect(() => {
@@ -199,7 +204,25 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
                             </div>
                         )}
 
-                        <div style={{ marginLeft: "auto" }}>
+                        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "16px" }}>
+                            {mounted && (
+                                <button
+                                    onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                                    style={{
+                                        background: "transparent",
+                                        border: "none",
+                                        cursor: "pointer",
+                                        color: "var(--text-muted)",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        transition: "color 0.2s"
+                                    }}
+                                    title="Toggle Theme"
+                                >
+                                    {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                                </button>
+                            )}
                             <SlidersHorizontal size={18} style={{ color: "var(--text-muted)" }} />
                         </div>
                     </header>

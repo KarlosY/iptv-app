@@ -51,6 +51,7 @@ export function Sidebar({
     onClose,
 }: SidebarProps) {
     const [showAllCountries, setShowAllCountries] = useState(false);
+    const [showAllCategories, setShowAllCategories] = useState(false);
     const [countrySearch, setCountrySearch] = useState("");
 
     const countriesList = countrySearch
@@ -135,7 +136,7 @@ export function Sidebar({
                 {/* Categories */}
                 <div className="sidebar-section">
                     <p className="sidebar-section-title">Categories</p>
-                    {categories.map((cat) => (
+                    {(showAllCategories ? categories : categories.slice(0, 5)).map((cat) => (
                         <div
                             key={cat.id}
                             className={`sidebar-item ${selectedCategory === cat.id ? "active" : ""}`}
@@ -145,6 +146,16 @@ export function Sidebar({
                             {cat.name}
                         </div>
                     ))}
+                    {categories.length > 5 && (
+                        <button
+                            onClick={() => setShowAllCategories(!showAllCategories)}
+                            className="flex items-center gap-2 mt-1 px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-lg border border-white/5"
+                            style={{ margin: "4px auto 0" }}
+                        >
+                            {showAllCategories ? "Show Less" : `View All (${categories.length})`}
+                            <ChevronDown size={14} className={`transition-transform duration-300 ${showAllCategories ? "rotate-180" : ""}`} />
+                        </button>
+                    )}
                 </div>
 
                 {/* Countries */}
@@ -166,7 +177,7 @@ export function Sidebar({
                                 style={{
                                     width: "100%",
                                     padding: "6px 12px",
-                                    background: "rgba(255,255,255,0.03)",
+                                    background: "var(--bg-card)",
                                     border: "1px solid var(--border)",
                                     borderRadius: "6px",
                                     color: "var(--text-primary)",
@@ -192,8 +203,8 @@ export function Sidebar({
                                 onClick={() => onSelectCountry(c.code)}
                                 title={c.name}
                             >
-                                <span style={{ fontSize: "14px" }}>{flag}</span>
-                                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</span>
+                                <span style={{ fontSize: "14px", display: "flex", alignItems: "center" }}>{flag}</span>
+                                <span style={{ overflow: "hidden", textOverflow: "ellipsis", paddingTop: "1px" }}>{c.name}</span>
                             </div>
                         );
                     })}
@@ -235,7 +246,7 @@ export function Sidebar({
                     Data provided by <a href="https://iptv-org.github.io/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", textDecoration: "none" }}>iptv-org</a>.
                 </p>
                 <div style={{ display: "flex", gap: "12px" }}>
-                    <a href="https://github.com/iptv-org/iptv" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-secondary)", transition: "color 0.2s" }} title="GitHub">
+                    <a href="https://github.com/KarlosY/iptv-app" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-secondary)", transition: "color 0.2s" }} title="GitHub">
                         <Github size={16} />
                     </a>
                     <a href="https://iptv-org.github.io/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-secondary)", transition: "color 0.2s" }} title="Website">
@@ -243,7 +254,7 @@ export function Sidebar({
                     </a>
                 </div>
                 <div style={{ display: "flex", gap: "8px", fontSize: "10px", marginTop: "2px" }}>
-                    <Link href="/terms" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Terms & Conditions</Link>
+                    <Link href="/terms" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Terms</Link>
                     <span style={{ color: "var(--border)" }}>•</span>
                     <Link href="/privacy" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Privacy</Link>
                 </div>
