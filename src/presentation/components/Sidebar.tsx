@@ -231,34 +231,6 @@ export function Sidebar({
                 </div>
             </div>
                 
-            {/* Sidebar Footer (Sticky at bottom) */}
-            <div style={{
-                padding: "16px 20px",
-                borderTop: "1px solid var(--border)",
-                background: "var(--bg-sidebar)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "12px",
-                flexShrink: 0,
-                zIndex: 10
-            }}>
-                <p style={{ fontSize: "11px", color: "var(--text-muted)", lineHeight: 1.5 }}>
-                    Data provided by <a href="https://iptv-org.github.io/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", textDecoration: "none" }}>iptv-org</a>.
-                </p>
-                <div style={{ display: "flex", gap: "12px" }}>
-                    <a href="https://github.com/KarlosY/iptv-app" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-secondary)", transition: "color 0.2s" }} title="GitHub">
-                        <Github size={16} />
-                    </a>
-                    <a href="https://iptv-org.github.io/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-secondary)", transition: "color 0.2s" }} title="Website">
-                        <Globe size={16} />
-                    </a>
-                </div>
-                <div style={{ display: "flex", gap: "8px", fontSize: "10px", marginTop: "2px" }}>
-                    <Link href="/terms" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Terms</Link>
-                    <span style={{ color: "var(--border)" }}>•</span>
-                    <Link href="/privacy" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Privacy</Link>
-                </div>
-            </div>
             </aside>
         </>
     );

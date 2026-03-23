@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Search, Tv, SlidersHorizontal, Menu, Sun, Moon } from 'lucide-react';
+import { Search, Tv, SlidersHorizontal, Menu, Sun, Moon, Info } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import type { Channel, Category, Country, Stream } from "@/domain/entities";
 import { useChannelFilter } from "@/presentation/hooks/useChannelFilter";
@@ -11,6 +11,8 @@ import { Sidebar } from "@/presentation/components/Sidebar";
 import { PlayerModal } from "@/presentation/components/PlayerModal";
 import { PlayerProvider } from "@/presentation/context/PlayerContext";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
+import { AboutModal } from "./AboutModal";
+import { HeroBillboard } from "./HeroBillboard";
 
 interface HomeClientProps {
     channels: Channel[];
@@ -52,6 +54,7 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
     const { channelsWithStreams, filteredChannels } = useChannelFilter(channels, streamsMap);
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isAboutOpen, setIsAboutOpen] = useState(false);
 
     const { theme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
@@ -223,9 +226,23 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
                                     {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
                                 </button>
                             )}
+                            <button
+                                onClick={() => setIsAboutOpen(true)}
+                                style={{
+                                    background: "transparent", border: "none", cursor: "pointer",
+                                    color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", transition: "color 0.2s"
+                                }}
+                                title="About"
+                            >
+                                <Info size={18} />
+                            </button>
                             <SlidersHorizontal size={18} style={{ color: "var(--text-muted)" }} />
                         </div>
                     </header>
+
+                    {!search && !showFavorites && !showRecents && channelsWithStreams.length > 0 && (
+                        <HeroBillboard channels={channelsWithStreams.slice(0, 5)} streamsMap={streamsMap} />
+                    )}
 
                     {/* Stats bar */}
                     <div className="stats-bar">
