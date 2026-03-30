@@ -72,11 +72,28 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
             
             for (const playlist of customPlaylists) {
                 try {
-                    // Evitamos problemas de unicode al cifrar base64
-                    const b64 = btoa(unescape(encodeURIComponent(playlist.url)));
-                    const res = await fetch(`/api/proxy?url=${b64}`);
-                    if (!res.ok) continue;
-                    const text = await res.text();
+                    let text = '';
+                    
+                    // INTENTO 1: Fetch directo (Nativo) - Evita Cloudflare WAF usando IP Residencial
+                    try {
+                        const directRes = await fetch(playlist.url);
+                        if (directRes.ok) {
+                            text = await directRes.text();
+                        }
+                    } catch (e) {
+                        console.warn(`[CORS] Direct fetch failed for ${playlist.url}, falling back to Proxy`);
+                    }
+                    
+                    // INTENTO 2: Fallback al Proxy - Evita Bloqueo CORS usando IP de Vercel/DataCenter
+                    if (!text) {
+                        const b64 = btoa(unescape(encodeURIComponent(playlist.url)));
+                        const proxyRes = await fetch(`/api/proxy?url=${b64}`);
+                        if (proxyRes.ok) {
+                            text = await proxyRes.text();
+                        }
+                    }
+                    
+                    if (!text) continue; // Ambos intentos fallaron
                     
                     const { channels: pChannels, streamsMap: pStreams } = parseM3U(text, playlist.name);
                     combinedChannels = [...combinedChannels, ...pChannels];
