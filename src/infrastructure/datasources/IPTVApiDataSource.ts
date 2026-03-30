@@ -20,7 +20,22 @@ async function fetchJSON<T>(path: string): Promise<T> {
 }
 
 export const IPTVApiDataSource = {
-    fetchChannels: () => fetchJSON<Channel[]>("/channels.json"),
+    fetchChannels: async () => {
+        const [channels, logos] = await Promise.all([
+            fetchJSON<Channel[]>("/channels.json"),
+            fetchJSON<{ channel: string; url: string }[]>("/logos.json").catch(() => [])
+        ]);
+
+        const logoMap = new Map<string, string>();
+        for (const l of logos) {
+            logoMap.set(l.channel, l.url);
+        }
+
+        return channels.map(c => ({
+            ...c,
+            logo: logoMap.get(c.id) || ""
+        }));
+    },
     fetchStreams: () => fetchJSON<Stream[]>("/streams.json"),
     fetchCategories: () => fetchJSON<Category[]>("/categories.json"),
     fetchCountries: () => fetchJSON<Country[]>("/countries.json"),
