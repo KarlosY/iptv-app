@@ -12,7 +12,9 @@ import { PlayerModal } from "@/presentation/components/PlayerModal";
 import { PlayerProvider } from "@/presentation/context/PlayerContext";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { AboutModal } from "./AboutModal";
+import { ImportModal } from "./ImportModal";
 import { HeroBillboard } from "./HeroBillboard";
+import { parseM3U } from "@/application/parsers/m3uParser";
 
 interface HomeClientProps {
     channels: Channel[];
@@ -51,10 +53,80 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
     const hasInitializedCountry = useAppStore(s => s.hasInitializedCountry);
     const setHasInitializedCountry = useAppStore(s => s.setHasInitializedCountry);
 
-    const { channelsWithStreams, filteredChannels } = useChannelFilter(channels, streamsMap);
+    const customPlaylists = useAppStore(s => s.customPlaylists);
+    const setCustomData = useAppStore(s => s.setCustomData);
+    const customChannels = useAppStore(s => s.customChannels);
+    const customStreamsMap = useAppStore(s => s.customStreamsMap);
+
+    const [isParsingPlaylists, setIsParsingPlaylists] = useState(false);
+
+    useEffect(() => {
+        async function loadCustomPlaylists() {
+            if (customPlaylists.length === 0) {
+                setCustomData([], {});
+                return;
+            }
+            setIsParsingPlaylists(true);
+            let combinedChannels: Channel[] = [];
+            const combinedStreams: Record<string, Stream[]> = {};
+            
+            for (const playlist of customPlaylists) {
+                try {
+                    // Evitamos problemas de unicode al cifrar base64
+                    const b64 = btoa(unescape(encodeURIComponent(playlist.url)));
+                    const res = await fetch(`/api/proxy?url=${b64}`);
+                    if (!res.ok) continue;
+                    const text = await res.text();
+                    
+                    const { channels: pChannels, streamsMap: pStreams } = parseM3U(text, playlist.name);
+                    combinedChannels = [...combinedChannels, ...pChannels];
+                    
+                    // Mezclar colisiones
+                    Object.keys(pStreams).forEach(key => {
+                        combinedStreams[key] = pStreams[key];
+                    });
+                } catch (e) {
+                    console.error("Failed to parse", playlist.name, e);
+                }
+            }
+            setCustomData(combinedChannels, combinedStreams);
+            setIsParsingPlaylists(false);
+        }
+        loadCustomPlaylists();
+    }, [customPlaylists, setCustomData]);
+
+    const allChannels = useMemo(() => [...channels, ...customChannels], [channels, customChannels]);
+    
+    const allStreamsMap = useMemo(() => {
+        const merged = new Map(streamsMap);
+        Object.entries(customStreamsMap).forEach(([id, streamArr]) => {
+            const ext = merged.get(id) || [];
+            merged.set(id, [...ext, ...streamArr]);
+        });
+        return merged;
+    }, [streamsMap, customStreamsMap]);
+
+    const { channelsWithStreams, filteredChannels } = useChannelFilter(allChannels, allStreamsMap);
+
+    const dynamicCategories = useMemo(() => {
+        const customCats = new Set<string>();
+        customChannels.forEach(c => {
+            c.categories.forEach(cat => {
+                if (!categories.some(orig => orig.name === cat)) {
+                    customCats.add(cat);
+                }
+            });
+        });
+        const extraCats: Category[] = Array.from(customCats).map(name => ({
+            id: name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+            name
+        }));
+        return [...categories, ...extraCats];
+    }, [categories, customChannels]);
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isAboutOpen, setIsAboutOpen] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [browserCountry, setBrowserCountry] = useState<string | null>(null);
 
     const { theme, setTheme } = useTheme();
@@ -160,7 +232,7 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
             <div className="app-layout">
                 {/* Sidebar */}
                 <Sidebar
-                    categories={categories}
+                    categories={dynamicCategories}
                     countries={countries}
                     selectedCategory={category}
                     selectedCountry={country}
@@ -171,10 +243,14 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
                     onShowFavorites={setShowFavorites}
                     onShowRecents={setShowRecents}
                     onResetFilters={resetFilters}
-                    totalChannels={channels.filter(c => !c.is_nsfw && (streamsMap.get(c.id)?.length ?? 0) > 0).length}
-                    filteredCount={channelsWithStreams.length}
+                    totalChannels={allChannels.length}
+                    filteredCount={filteredChannels.length}
                     isOpen={isSidebarOpen}
                     onClose={() => setIsSidebarOpen(false)}
+                    onOpenImport={() => {
+                        setIsSidebarOpen(false);
+                        setIsImportModalOpen(true);
+                    }}
                 />
 
                 {/* Main */}
@@ -351,7 +427,7 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
                                                 <div key={channel.id} style={{ minWidth: 0, height: "100%" }}>
                                                     <ChannelCard
                                                         channel={channel}
-                                                        streams={streamsMap.get(channel.id) ?? []}
+                                                        streams={allStreamsMap.get(channel.id) ?? []}
                                                         isFavorite={favorites.includes(channel.id)}
                                                         onToggleFavorite={toggleFavorite}
                                                     />
@@ -371,6 +447,9 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
 
             {/* About Modal */}
             <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
+            
+            {/* Import / BYOC Modal */}
+            <ImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} />
         </PlayerProvider>
     );
 }

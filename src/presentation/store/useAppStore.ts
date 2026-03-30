@@ -1,5 +1,15 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { Channel, Stream } from '@/domain/entities';
+
+export interface PlaylistCredentials {
+    id: string;
+    name: string;
+    url: string;
+    type: 'm3u' | 'xtream';
+    username?: string;
+    password?: string;
+}
 
 interface AppState {
     // Filters
@@ -28,6 +38,20 @@ interface AppState {
     // Config state
     hasInitializedCountry: boolean;
     setHasInitializedCountry: (val: boolean) => void;
+
+    // Security
+    isAdultUnlocked: boolean;
+    unlockAdult: () => void;
+
+    // Custom Playlists (BYOC)
+    customPlaylists: PlaylistCredentials[];
+    addPlaylist: (playlist: PlaylistCredentials) => void;
+    removePlaylist: (id: string) => void;
+    
+    // In-memory unified state (Not persisted directly via Zustand to save space)
+    customChannels: Channel[];
+    customStreamsMap: Record<string, Stream[]>;
+    setCustomData: (channels: Channel[], streams: Record<string, Stream[]>) => void;
 }
 
 const MAX_RECENTS = 20;
@@ -70,6 +94,17 @@ export const useAppStore = create<AppState>()(
             }),
 
             clearRecents: () => set({ recentChannelIds: [] }),
+
+            isAdultUnlocked: false,
+            unlockAdult: () => set({ isAdultUnlocked: true }),
+
+            customPlaylists: [],
+            addPlaylist: (p) => set(s => ({ customPlaylists: [...s.customPlaylists, p] })),
+            removePlaylist: (id) => set(s => ({ customPlaylists: s.customPlaylists.filter(p => p.id !== id) })),
+            
+            customChannels: [],
+            customStreamsMap: {},
+            setCustomData: (c, s) => set({ customChannels: c, customStreamsMap: s }),
         }),
         {
             name: 'iptv-storage',
@@ -78,6 +113,8 @@ export const useAppStore = create<AppState>()(
                 recentChannelIds: state.recentChannelIds,
                 country: state.country,
                 hasInitializedCountry: state.hasInitializedCountry,
+                isAdultUnlocked: state.isAdultUnlocked,
+                customPlaylists: state.customPlaylists,
             }),
         }
     )

@@ -14,18 +14,32 @@ export function useChannelFilter(
     const showRecents = useAppStore(s => s.showRecents);
     const favorites = useAppStore(s => s.favorites);
     const recentChannelIds = useAppStore(s => s.recentChannelIds);
+    const isAdultUnlocked = useAppStore(s => s.isAdultUnlocked);
 
     const deferredSearch = useDeferredValue(search);
 
     const filteredChannels = useMemo(() => {
+        const ADULT_KEYWORDS = ['xxx', 'adult', '18+'];
+
         const result = channels.filter((ch) => {
-            if (ch.is_nsfw) return false;
+            const isAdultChannel = ch.is_nsfw || ch.categories.some(cat => ADULT_KEYWORDS.includes(cat.toLowerCase()));
+            if (!isAdultUnlocked && isAdultChannel) return false;
 
             if (showFavorites && !favorites.includes(ch.id)) return false;
             if (showRecents && !recentChannelIds.includes(ch.id)) return false;
 
-            if (category && !ch.categories.includes(category)) return false;
-            if (country && ch.country?.toLowerCase() !== country.toLowerCase()) return false;
+            if (category) {
+                const categoryMatched = ch.categories.some(c => 
+                    c === category || c.toLowerCase().replace(/[^a-z0-9]/g, '-') === category
+                );
+                if (!categoryMatched) return false;
+            }
+            if (country && ch.country?.toLowerCase() !== country.toLowerCase()) {
+                // EXCEPTION: BYOC channels (which lack country) bypass the country filter
+                if (!(ch.id.startsWith('custom_') && !ch.country)) {
+                    return false;
+                }
+            }
 
             if (deferredSearch) {
                 const q = deferredSearch.toLowerCase();
@@ -48,7 +62,7 @@ export function useChannelFilter(
         }
 
         return result;
-    }, [channels, category, country, showFavorites, showRecents, favorites, recentChannelIds, deferredSearch]);
+    }, [channels, category, country, showFavorites, showRecents, favorites, recentChannelIds, deferredSearch, isAdultUnlocked]);
 
     // Only show channels that actually have at least one stream
     const channelsWithStreams = useMemo(

@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Tv, Globe, LayoutGrid, TrendingUp, Music, Gamepad2, Newspaper, Baby, Film, Zap, Trophy, ChevronDown, ChevronUp, Heart, Clock, Github } from "lucide-react";
 import type { Category, Country } from "@/domain/entities";
+import { useAppStore } from "@/presentation/store/useAppStore";
+import { PinModal } from "./PinModal";
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
     news: <Newspaper size={15} />,
@@ -31,6 +33,7 @@ interface SidebarProps {
     filteredCount: number;
     isOpen?: boolean;
     onClose?: () => void;
+    onOpenImport?: () => void;
 }
 
 export function Sidebar({
@@ -49,10 +52,15 @@ export function Sidebar({
     filteredCount,
     isOpen = false,
     onClose,
+    onOpenImport,
 }: SidebarProps) {
     const [showAllCountries, setShowAllCountries] = useState(false);
     const [showAllCategories, setShowAllCategories] = useState(false);
     const [countrySearch, setCountrySearch] = useState("");
+    const [pendingAdultCat, setPendingAdultCat] = useState<string | null>(null);
+
+    const isAdultUnlocked = useAppStore(s => s.isAdultUnlocked);
+    const unlockAdult = useAppStore(s => s.unlockAdult);
 
     const countriesList = countrySearch
         ? countries.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase()))
@@ -135,12 +143,29 @@ export function Sidebar({
 
                 {/* Categories */}
                 <div className="sidebar-section">
+                    <button 
+                        onClick={onOpenImport}
+                        style={{ width: '100%', padding: '10px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, marginBottom: '20px', transition: 'filter 0.2s', fontSize: '14px' }}
+                    >
+                        + Añadir Lista
+                    </button>
                     <p className="sidebar-section-title">Categories</p>
                     {(showAllCategories ? categories : categories.slice(0, 5)).map((cat) => (
                         <div
                             key={cat.id}
                             className={`sidebar-item ${selectedCategory === cat.id ? "active" : ""}`}
-                            onClick={() => onSelectCategory(cat.id)}
+                            onClick={() => {
+                                if (selectedCategory === cat.id) {
+                                    onSelectCategory("");
+                                    return;
+                                }
+                                const isAdultCat = ['xxx', 'adult', '18+'].includes(cat.id.toLowerCase());
+                                if (isAdultCat && !isAdultUnlocked) {
+                                    setPendingAdultCat(cat.id);
+                                } else {
+                                    onSelectCategory(cat.id);
+                                }
+                            }}
                         >
                             {CATEGORY_ICONS[cat.id] ?? <LayoutGrid size={15} />}
                             {cat.name}
@@ -232,6 +257,17 @@ export function Sidebar({
             </div>
                 
             </aside>
+            <PinModal 
+                isOpen={pendingAdultCat !== null} 
+                onClose={() => setPendingAdultCat(null)} 
+                onSuccess={() => {
+                    unlockAdult();
+                    if (pendingAdultCat) {
+                        onSelectCategory(pendingAdultCat);
+                    }
+                    setPendingAdultCat(null);
+                }} 
+            />
         </>
     );
 }
