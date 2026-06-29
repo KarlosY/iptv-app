@@ -14,7 +14,6 @@ import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { AboutModal } from "./AboutModal";
 import { ImportModal } from "./ImportModal";
 import { HeroBillboard } from "./HeroBillboard";
-import { parseM3U } from "@/application/parsers/m3uParser";
 
 interface HomeClientProps {
     channels: Channel[];
@@ -39,6 +38,7 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
     const search = useAppStore(s => s.search);
     const category = useAppStore(s => s.category);
     const country = useAppStore(s => s.country);
+    const language = useAppStore(s => s.language);
     const showFavorites = useAppStore(s => s.showFavorites);
     const showRecents = useAppStore(s => s.showRecents);
     const favorites = useAppStore(s => s.favorites);
@@ -46,6 +46,7 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
     const setSearch = useAppStore(s => s.setSearch);
     const setCategory = useAppStore(s => s.setCategory);
     const setCountry = useAppStore(s => s.setCountry);
+    const setLanguage = useAppStore(s => s.setLanguage);
     const setShowFavorites = useAppStore(s => s.setShowFavorites);
     const setShowRecents = useAppStore(s => s.setShowRecents);
     const resetFilters = useAppStore(s => s.resetFilters);
@@ -54,63 +55,21 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
     const setHasInitializedCountry = useAppStore(s => s.setHasInitializedCountry);
 
     const customPlaylists = useAppStore(s => s.customPlaylists);
-    const setCustomData = useAppStore(s => s.setCustomData);
     const customChannels = useAppStore(s => s.customChannels);
     const customStreamsMap = useAppStore(s => s.customStreamsMap);
-
-    const [isParsingPlaylists, setIsParsingPlaylists] = useState(false);
+    const loadCustomDataFromIndexedDB = useAppStore(s => s.loadCustomDataFromIndexedDB);
+    const loadEpg = useAppStore(s => s.loadEpg);
+    const epgUrl = useAppStore(s => s.epgUrl);
 
     useEffect(() => {
-        async function loadCustomPlaylists() {
-            if (customPlaylists.length === 0) {
-                setCustomData([], {});
-                return;
-            }
-            setIsParsingPlaylists(true);
-            let combinedChannels: Channel[] = [];
-            const combinedStreams: Record<string, Stream[]> = {};
-            
-            for (const playlist of customPlaylists) {
-                try {
-                    let text = '';
-                    
-                    // INTENTO 1: Fetch directo (Nativo) - Evita Cloudflare WAF usando IP Residencial
-                    try {
-                        const directRes = await fetch(playlist.url);
-                        if (directRes.ok) {
-                            text = await directRes.text();
-                        }
-                    } catch (e) {
-                        console.warn(`[CORS] Direct fetch failed for ${playlist.url}, falling back to Proxy`);
-                    }
-                    
-                    // INTENTO 2: Fallback al Proxy - Evita Bloqueo CORS usando IP de Vercel/DataCenter
-                    if (!text) {
-                        const b64 = btoa(unescape(encodeURIComponent(playlist.url)));
-                        const proxyRes = await fetch(`/api/proxy?url=${b64}`);
-                        if (proxyRes.ok) {
-                            text = await proxyRes.text();
-                        }
-                    }
-                    
-                    if (!text) continue; // Ambos intentos fallaron
-                    
-                    const { channels: pChannels, streamsMap: pStreams } = parseM3U(text, playlist.name);
-                    combinedChannels = [...combinedChannels, ...pChannels];
-                    
-                    // Mezclar colisiones
-                    Object.keys(pStreams).forEach(key => {
-                        combinedStreams[key] = pStreams[key];
-                    });
-                } catch (e) {
-                    console.error("Failed to parse", playlist.name, e);
-                }
-            }
-            setCustomData(combinedChannels, combinedStreams);
-            setIsParsingPlaylists(false);
+        loadCustomDataFromIndexedDB();
+    }, [loadCustomDataFromIndexedDB, customPlaylists]);
+
+    useEffect(() => {
+        if (epgUrl) {
+            loadEpg().catch((err) => console.warn("Failed to auto-load EPG:", err));
         }
-        loadCustomPlaylists();
-    }, [customPlaylists, setCustomData]);
+    }, [epgUrl, loadEpg]);
 
     const allChannels = useMemo(() => [...channels, ...customChannels], [channels, customChannels]);
     
@@ -124,6 +83,48 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
     }, [streamsMap, customStreamsMap]);
 
     const { channelsWithStreams, filteredChannels } = useChannelFilter(allChannels, allStreamsMap);
+
+    const dynamicLanguages = useMemo(() => {
+        const langsSet = new Set<string>();
+        allChannels.forEach(ch => {
+            if (ch.languages) {
+                ch.languages.forEach(l => {
+                    if (l && l.trim().length > 0) {
+                        langsSet.add(l.toLowerCase().trim());
+                    }
+                });
+            }
+        });
+        
+        const ISO_LANGS: Record<string, string> = {
+            spa: "Español",
+            eng: "Inglés",
+            por: "Portugués",
+            fra: "Francés",
+            deu: "Alemán",
+            ita: "Italiano",
+            zho: "Chino",
+            jpn: "Japonés",
+            rus: "Ruso",
+            ara: "Árabe",
+            hin: "Hindi",
+            cat: "Catalán",
+            glg: "Gallego",
+            eus: "Vasco / Euskera",
+            nld: "Neerlandés",
+            pol: "Polaco",
+            tur: "Turco",
+            swe: "Sueco",
+            kor: "Coreano",
+        };
+
+        return Array.from(langsSet)
+            .map(code => ({
+                code,
+                name: ISO_LANGS[code] || code.toUpperCase()
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }, [allChannels]);
 
     const dynamicCategories = useMemo(() => {
         const customCats = new Set<string>();
@@ -145,6 +146,7 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
     const [isAboutOpen, setIsAboutOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [browserCountry, setBrowserCountry] = useState<string | null>(null);
+    const [detectedCountryName, setDetectedCountryName] = useState<string | null>(null);
 
     const { theme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
@@ -165,22 +167,71 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
     useEffect(() => {
         if (!hasInitializedCountry) {
             const fetchCountry = async () => {
+                let code = '';
+                let detectedName = '';
+                
+                // 1. Try ip.guide first
                 try {
-                    const res = await fetch("https://get.geojs.io/v1/ip/country.json");
+                    const res = await fetch("https://ip.guide/");
                     if (res.ok) {
                         const data = await res.json();
-                        if (data && data.country) {
-                            const code = data.country.toLowerCase();
-                            if (countries.some(c => c.code === code)) {
-                                setCountry(code);
+                        const countryVal = data?.location?.country;
+                        const asnCountry = data?.network?.autonomous_system?.country;
+                        
+                        if (countryVal) {
+                            if (typeof countryVal === 'object' && countryVal.code) {
+                                const matched = countries.find(c => c.code.toLowerCase() === countryVal.code.toLowerCase());
+                                if (matched) {
+                                    code = matched.code;
+                                    detectedName = matched.name;
+                                }
+                            } else if (typeof countryVal === 'string') {
+                                const matched = countries.find(c => c.name.toLowerCase() === countryVal.toLowerCase() || c.code.toLowerCase() === countryVal.toLowerCase());
+                                if (matched) {
+                                    code = matched.code;
+                                    detectedName = matched.name;
+                                }
+                            }
+                        }
+                        
+                        // Fallback to ASN country code if location country didn't match
+                        if (!code && asnCountry && typeof asnCountry === 'string') {
+                            const matched = countries.find(c => c.code.toLowerCase() === asnCountry.toLowerCase());
+                            if (matched) {
+                                code = matched.code;
+                                detectedName = matched.name;
                             }
                         }
                     }
                 } catch (err) {
-                    // Silently ignore if blocked by adblockers or browsers to avoid console errors
-                } finally {
-                    setHasInitializedCountry(true);
+                    console.warn("ip.guide failed, trying fallback:", err);
                 }
+
+                // 2. Fallback to geojs
+                if (!code) {
+                    try {
+                        const res = await fetch("https://get.geojs.io/v1/ip/country.json");
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data && data.country) {
+                                const matched = countries.find(c => c.code.toLowerCase() === data.country.toLowerCase());
+                                if (matched) {
+                                    code = matched.code;
+                                    detectedName = matched.name;
+                                }
+                            }
+                        }
+                    } catch (err) {
+                        console.warn("geojs fallback failed:", err);
+                    }
+                }
+
+                // Set country if found
+                if (code) {
+                    setCountry(code);
+                    setDetectedCountryName(detectedName);
+                }
+                setHasInitializedCountry(true);
             };
             fetchCountry();
         }
@@ -251,12 +302,15 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
                 <Sidebar
                     categories={dynamicCategories}
                     countries={countries}
+                    languages={dynamicLanguages}
                     selectedCategory={category}
                     selectedCountry={country}
+                    selectedLanguage={language}
                     showFavorites={showFavorites}
                     showRecents={showRecents}
                     onSelectCategory={setCategory}
                     onSelectCountry={setCountry}
+                    onSelectLanguage={setLanguage}
                     onShowFavorites={setShowFavorites}
                     onShowRecents={setShowRecents}
                     onResetFilters={resetFilters}
@@ -363,6 +417,41 @@ export function HomeClient({ channels, streams, categories, countries }: HomeCli
                             <SlidersHorizontal size={18} style={{ color: "var(--text-muted)" }} />
                         </div>
                     </header>
+
+                    {detectedCountryName && country === countries.find(c => c.name === detectedCountryName)?.code && (
+                        <div style={{
+                            margin: '16px 24px 0',
+                            padding: '12px 20px',
+                            background: 'rgba(9, 128, 202, 0.08)',
+                            border: '1px solid rgba(9, 128, 202, 0.2)',
+                            borderRadius: '12px',
+                            color: 'var(--text-secondary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            fontSize: '13.5px',
+                            animation: 'slideUp 0.3s ease-out'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '16px' }}>📍</span>
+                                <span>Hemos detectado tu ubicación en <strong>{detectedCountryName}</strong>. Mostrando canales nacionales automáticamente.</span>
+                            </div>
+                            <button 
+                                onClick={() => setDetectedCountryName(null)}
+                                style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'var(--text-muted)',
+                                    cursor: 'pointer',
+                                    fontWeight: 600,
+                                    fontSize: '12px',
+                                    padding: '4px 8px'
+                                }}
+                            >
+                                Entendido
+                            </button>
+                        </div>
+                    )}
 
                     {heroChannels.length > 0 && (
                         <HeroBillboard channels={heroChannels} streamsMap={streamsMap} />

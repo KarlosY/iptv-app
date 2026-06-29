@@ -10,20 +10,19 @@ export function useChannelFilter(
     const search = useAppStore(s => s.search);
     const category = useAppStore(s => s.category);
     const country = useAppStore(s => s.country);
+    const language = useAppStore(s => s.language);
     const showFavorites = useAppStore(s => s.showFavorites);
     const showRecents = useAppStore(s => s.showRecents);
     const favorites = useAppStore(s => s.favorites);
     const recentChannelIds = useAppStore(s => s.recentChannelIds);
-    const isAdultUnlocked = useAppStore(s => s.isAdultUnlocked);
-
     const deferredSearch = useDeferredValue(search);
 
     const filteredChannels = useMemo(() => {
-        const ADULT_KEYWORDS = ['xxx', 'adult', '18+'];
+        const ADULT_KEYWORDS = ['xxx', 'adult', '18+', 'erotic', 'hot', 'nsfw', 'x-rated', 'porn', 'playboy', 'penthouse', 'venus'];
 
         const result = channels.filter((ch) => {
             const isAdultChannel = ch.is_nsfw || ch.categories.some(cat => ADULT_KEYWORDS.includes(cat.toLowerCase()));
-            if (!isAdultUnlocked && isAdultChannel) return false;
+            if (isAdultChannel) return false;
 
             if (showFavorites && !favorites.includes(ch.id)) return false;
             if (showRecents && !recentChannelIds.includes(ch.id)) return false;
@@ -37,6 +36,12 @@ export function useChannelFilter(
             if (country && ch.country?.toLowerCase() !== country.toLowerCase()) {
                 // EXCEPTION: BYOC channels (which lack country) bypass the country filter
                 if (!(ch.id.startsWith('custom_') && !ch.country)) {
+                    return false;
+                }
+            }
+            if (language && !ch.languages.some(l => l.toLowerCase() === language.toLowerCase())) {
+                // EXCEPTION: BYOC channels (which lack language info) bypass the language filter
+                if (!(ch.id.startsWith('custom_') && (!ch.languages || ch.languages.length === 0))) {
                     return false;
                 }
             }
@@ -62,7 +67,7 @@ export function useChannelFilter(
         }
 
         return result;
-    }, [channels, category, country, showFavorites, showRecents, favorites, recentChannelIds, deferredSearch, isAdultUnlocked]);
+    }, [channels, category, country, language, showFavorites, showRecents, favorites, recentChannelIds, deferredSearch]);
 
     // Only show channels that actually have at least one stream
     const channelsWithStreams = useMemo(

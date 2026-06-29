@@ -3,6 +3,8 @@ import React, { useState } from "react";
 import { Play, Tv, Heart } from "lucide-react";
 import type { Channel, Stream } from "@/domain/entities";
 import { usePlayer } from "@/presentation/context/PlayerContext";
+import { useAppStore } from "@/presentation/store/useAppStore";
+import { normalizeEpgName, getCurrentProgram } from "@/application/services/epgService";
 
 interface ChannelCardProps {
     channel: Channel;
@@ -14,6 +16,8 @@ interface ChannelCardProps {
 export function ChannelCard({ channel, streams, isFavorite, onToggleFavorite }: ChannelCardProps) {
     const { openPlayer } = usePlayer();
     const [logoError, setLogoError] = useState(false);
+
+    const epgData = useAppStore(s => s.epgData);
 
     const primaryCategory = channel.categories[0] ?? "general";
     const categoryLabel = primaryCategory.charAt(0).toUpperCase() + primaryCategory.slice(1);
@@ -27,6 +31,13 @@ export function ChannelCard({ channel, streams, isFavorite, onToggleFavorite }: 
     const handleClick = () => {
         if (streams.length > 0) openPlayer(channel, streams);
     };
+
+    const onlyHttp = streams.length > 0 && streams.every(s => s.url.startsWith("http://"));
+
+    // Get current EPG program
+    const normName = normalizeEpgName(channel.name);
+    const programs = epgData[normName];
+    const { current, progress } = getCurrentProgram(programs);
 
     return (
         <div className="channel-card" onClick={handleClick} title={channel.name}>
@@ -84,6 +95,23 @@ export function ChannelCard({ channel, streams, isFavorite, onToggleFavorite }: 
             {/* Card body */}
             <div className="card-body">
                 <p className="card-name">{channel.name}</p>
+                
+                {current ? (
+                    <div style={{ marginTop: '4px', marginBottom: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-primary)', opacity: 0.9, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <span style={{ color: 'var(--accent)', fontWeight: 700 }}>🔴 En vivo:</span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '75%', paddingLeft: 4 }} title={current.title}>
+                                {current.title}
+                            </span>
+                        </div>
+                        <div style={{ width: '100%', height: '3px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', marginTop: '4px', overflow: 'hidden' }}>
+                            <div style={{ width: `${progress}%`, height: '100%', background: 'var(--accent)', borderRadius: '2px', transition: 'width 0.5s ease-out' }} />
+                        </div>
+                    </div>
+                ) : (
+                    <div style={{ height: '17px' }} />
+                )}
+
                 <div className="card-meta">
                     {categoryLabel && (
                         <span className="badge badge-category">{categoryLabel}</span>
@@ -91,6 +119,11 @@ export function ChannelCard({ channel, streams, isFavorite, onToggleFavorite }: 
                     {channel.country && (
                         <span className="badge badge-country">
                             {countryFlag} {channel.country.toUpperCase()}
+                        </span>
+                    )}
+                    {onlyHttp && (
+                        <span className="badge badge-http" title="Este canal usa señal HTTP (insegura). En sitios HTTPS (como Vercel) el navegador podría bloquearlo. Requiere configuración de contenido no seguro en tu navegador." style={{ background: 'rgba(234, 179, 8, 0.12)', color: '#eab308', border: '1px solid rgba(234, 179, 8, 0.2)', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                            ⚠️ HTTP
                         </span>
                     )}
                 </div>
